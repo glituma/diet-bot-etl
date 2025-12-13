@@ -1,29 +1,32 @@
 import os
 import requests
-import urllib.parse
 from datetime import date
 from supabase import create_client, Client
 
-# Recuperamos secretos del entorno (GitHub Secrets)
+# Secretos de GitHub
 URL = os.environ.get("SUPABASE_URL")
 KEY = os.environ.get("SUPABASE_KEY")
-PHONE = os.environ.get("WHATSAPP_PHONE")
-API_KEY = os.environ.get("WHATSAPP_API_KEY")
+TG_TOKEN = os.environ.get("TELEGRAM_TOKEN")   # Nuevo
+TG_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID") # Nuevo
 
 supabase: Client = create_client(URL, KEY)
 
-def enviar_whatsapp_api(mensaje):
-    """Envía mensaje usando CallMeBot API (Funciona en Servidores)"""
-    print("📤 Enviando a WhatsApp API...")
-    msg_encoded = urllib.parse.quote(mensaje)
-    url = f"https://api.callmebot.com/whatsapp.php?phone={PHONE}&text={msg_encoded}&apikey={API_KEY}"
+def enviar_telegram(mensaje):
+    """Envía mensaje oficial a Telegram"""
+    print("📤 Enviando a Telegram...")
+    url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": TG_CHAT_ID,
+        "text": mensaje,
+        "parse_mode": "Markdown" # Para usar negritas con *texto*
+    }
     
     try:
-        resp = requests.get(url, timeout=20) # Timeout largo por seguridad
+        resp = requests.post(url, json=payload, timeout=10)
         if resp.status_code == 200:
-            print("✅ Mensaje entregado exitosamente.")
+            print("✅ Mensaje entregado en Telegram.")
         else:
-            print(f"❌ Error API: {resp.status_code} - {resp.text}")
+            print(f"❌ Error Telegram: {resp.status_code} - {resp.text}")
     except Exception as e:
         print(f"❌ Error de conexión: {e}")
 
@@ -42,10 +45,10 @@ def main():
     plan = data.data[0]['content']
     c = plan.get('comidas', {})
     
-    # Usamos formato simple para asegurar compatibilidad
+    # Formato Markdown para Telegram
     mensaje = (
         f"📅 *PLAN GORKI - {hoy}*\n"
-        f"🎯 {plan.get('meta')}\n\n"
+        f"🎯 _{plan.get('meta')}_\n\n"
         f"🍳 *Desayuno:* {c.get('desayuno')}\n"
         f"🥗 *Almuerzo:* {c.get('almuerzo')}\n"
         f"🍎 *Media Tarde:* {c.get('merienda')}\n\n"
@@ -53,7 +56,7 @@ def main():
     )
     
     # 3. Enviar
-    enviar_whatsapp_api(mensaje)
+    enviar_telegram(mensaje)
 
 if __name__ == "__main__":
     main()
